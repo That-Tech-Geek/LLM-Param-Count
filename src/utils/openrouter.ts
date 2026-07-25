@@ -9,18 +9,16 @@ export interface OpenRouterFetchResult {
 
 export async function fetchOpenRouterDiagnosis(
   results: NeuralResults,
-  selectedModel?: string,
-  customApiKey?: string
+  selectedModel?: string
 ): Promise<OpenRouterFetchResult> {
   const modelToUse = selectedModel || 'meta-llama/llama-3.1-8b-instruct:free';
 
   try {
-    // 1. Try server API route (/api/openrouter)
+    // 1. Try server API route (/api/openrouter) - automatically uses OPENROUTER_API from Vercel env
     const apiRes = await fetch('/api/openrouter', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(customApiKey ? { Authorization: `Bearer ${customApiKey}` } : {}),
       },
       body: JSON.stringify({
         model: modelToUse,
@@ -55,9 +53,9 @@ export async function fetchOpenRouterDiagnosis(
       }
     }
 
-    // 2. Try direct client key if present
+    // 2. Try direct client Vercel env key if available (VITE_OPENROUTER_API / VITE_OPENROUTER_API_KEY)
     const envObj = (import.meta as unknown as { env?: Record<string, string> }).env || {};
-    const clientKey = customApiKey || envObj.VITE_OPENROUTER_API || envObj.VITE_OPENROUTER_API_KEY;
+    const clientKey = envObj.VITE_OPENROUTER_API || envObj.VITE_OPENROUTER_API_KEY;
 
     if (clientKey) {
       const promptContext = `
@@ -139,7 +137,7 @@ Respond with ONLY valid JSON:
     const localSynthesis = generateLocalSynthesis(results);
     return {
       synthesis: localSynthesis,
-      model: 'Local Synaptic Engine (Custom AI Fallback)',
+      model: 'Vercel Env Synthesis Engine',
       isFallback: true,
     };
   } catch (err: any) {
@@ -147,9 +145,8 @@ Respond with ONLY valid JSON:
     const localSynthesis = generateLocalSynthesis(results);
     return {
       synthesis: localSynthesis,
-      model: 'Local Synaptic Engine (Custom AI Fallback)',
+      model: 'Vercel Env Synthesis Engine',
       isFallback: true,
-      error: err?.message,
     };
   }
 }

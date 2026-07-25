@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { QUESTIONS } from './data/questions';
 import { AnswersState, NeuralResults, QuestionMCQ, QuestionTyping } from './types';
 import { calculateResults } from './utils/mathEngine';
+import { logAssessmentToFirestore } from './utils/telemetry';
 import { Navbar } from './components/Navbar';
 import { ProgressBar } from './components/ProgressBar';
 import { IntroScreen } from './components/IntroScreen';
@@ -80,6 +81,7 @@ export default function App() {
   const handleCalculationComplete = () => {
     const calculated = calculateResults(answers, Date.now());
     setResults(calculated);
+    logAssessmentToFirestore(calculated);
     setCurrentStep(12); // Results
   };
 

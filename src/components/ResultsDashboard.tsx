@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NeuralResults, OpenRouterSynthesis } from '../types';
 import { fetchOpenRouterDiagnosis, OpenRouterFetchResult } from '../utils/openrouter';
+import { GlobalDistributionCharts } from './GlobalDistributionCharts';
 import {
   Cpu,
   Share2,
@@ -49,29 +50,24 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
   const [copied, setCopied] = useState(false);
   const [showMathDetails, setShowMathDetails] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
-  const [showKeyInput, setShowKeyInput] = useState(false);
 
   // OpenRouter State
   const [selectedModel, setSelectedModel] = useState<string>('meta-llama/llama-3.1-8b-instruct:free');
-  const [customApiKey, setCustomApiKey] = useState<string>('');
   const [synthesisData, setSynthesisData] = useState<OpenRouterSynthesis | null>(null);
   const [modelUsedName, setModelUsedName] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isFallbackMode, setIsFallbackMode] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
 
-  const runSynthesisFetch = async (model: string, apiKey?: string) => {
+  const runSynthesisFetch = async (model: string) => {
     setIsAiLoading(true);
-    setAiError(null);
 
-    const res: OpenRouterFetchResult = await fetchOpenRouterDiagnosis(results, model, apiKey);
+    const res: OpenRouterFetchResult = await fetchOpenRouterDiagnosis(results, model);
 
     setIsAiLoading(false);
     if (res.synthesis) {
       setSynthesisData(res.synthesis);
       setModelUsedName(res.model);
       setIsFallbackMode(!!res.isFallback);
-      if (res.error) setAiError(res.error);
     }
   };
 
@@ -81,12 +77,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
 
   const handleModelChange = (newModel: string) => {
     setSelectedModel(newModel);
-    runSynthesisFetch(newModel, customApiKey);
-  };
-
-  const handleCustomKeySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    runSynthesisFetch(selectedModel, customApiKey);
+    runSynthesisFetch(newModel);
   };
 
   // Billions conversion for share copy snippet
@@ -216,7 +207,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
                 OpenRouter AI Live Diagnostic Engine
               </h3>
               <p className="text-xs text-slate-400 font-mono">
-                Select an LLM model or connect your OpenRouter API Key
+                Powered by Vercel Environment Variables (<code className="text-purple-300">OPENROUTER_API</code>)
               </p>
             </div>
           </div>
@@ -225,21 +216,12 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
             <span
               className={`text-[11px] font-mono px-3 py-1 rounded-full border ${
                 isFallbackMode
-                  ? 'bg-slate-950 border-amber-700/60 text-amber-300'
-                  : 'bg-purple-950 border-purple-600 text-purple-300'
+                  ? 'bg-slate-950 border-purple-700/60 text-purple-300'
+                  : 'bg-purple-950 border-purple-500 text-purple-200'
               }`}
             >
               {modelUsedName || 'OpenRouter API'}
             </span>
-
-            <button
-              onClick={() => setShowKeyInput(!showKeyInput)}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-700/50 text-xs font-mono flex items-center space-x-1"
-              title="Configure API Key"
-            >
-              <Key className="w-3.5 h-3.5" />
-              <span>Key</span>
-            </button>
           </div>
         </div>
 
@@ -264,7 +246,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
 
           <div>
             <button
-              onClick={() => runSynthesisFetch(selectedModel, customApiKey)}
+              onClick={() => runSynthesisFetch(selectedModel)}
               disabled={isAiLoading}
               className="w-full mt-4 sm:mt-5 px-4 py-2.5 rounded-xl bg-purple-900/90 hover:bg-purple-800 text-purple-100 font-mono text-xs font-semibold border border-purple-500/50 transition flex items-center justify-center space-x-2 shadow-lg disabled:opacity-50"
             >
@@ -282,48 +264,6 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
             </button>
           </div>
         </div>
-
-        {/* Custom Key Expandable Form */}
-        <AnimatePresence>
-          {showKeyInput && (
-            <motion.form
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              onSubmit={handleCustomKeySubmit}
-              className="p-3 bg-slate-950/80 rounded-xl border border-purple-800/50 space-y-2 text-xs font-mono"
-            >
-              <label className="text-purple-300 block">
-                Enter Custom OpenRouter API Key (<code className="text-purple-400">sk-or-v1-...</code>):
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  value={customApiKey}
-                  onChange={(e) => setCustomApiKey(e.target.value)}
-                  placeholder="Paste sk-or-v1-..."
-                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-purple-400 text-xs font-mono"
-                />
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 bg-purple-800 hover:bg-purple-700 text-white rounded-lg font-semibold"
-                >
-                  Apply
-                </button>
-              </div>
-              <p className="text-[10px] text-slate-400">
-                Key is processed in-memory for this session only. You can also set{' '}
-                <code className="text-purple-300">OPENROUTER_API</code> in environment variables or Vercel.
-              </p>
-            </motion.form>
-          )}
-        </AnimatePresence>
-
-        {aiError && (
-          <p className="text-xs font-mono text-amber-400 bg-amber-950/40 p-2.5 rounded-xl border border-amber-800/50">
-            Notice: {aiError}
-          </p>
-        )}
       </div>
 
       {/* 3. Deep LLM Neural Diagnostics Report */}
@@ -531,6 +471,12 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Firestore Live Global Distribution & Population Charts */}
+      <GlobalDistributionCharts
+        userParamsBillion={results.finalParams / 1e9}
+        userArchetype={synthesisData?.customTitle || results.archetypeTitle}
+      />
 
       {/* 4. Accordion Section 1: Detailed Fine-Tuning & Math Breakdown */}
       <div className="bg-slate-900/80 rounded-2xl border border-slate-800 shadow-lg overflow-hidden">

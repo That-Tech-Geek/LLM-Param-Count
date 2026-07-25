@@ -11,8 +11,8 @@ export default async function handler(req: Request, res: Response) {
     process.env.VITE_OPENROUTER_API_KEY;
 
   if (!apiKey) {
-    return res.status(400).json({
-      error: 'OPENROUTER_API key is missing in environment variables or Vercel config.',
+    return res.status(200).json({
+      error: 'OPENROUTER_API environment variable is not configured in Vercel.',
       fallback: true,
     });
   }
