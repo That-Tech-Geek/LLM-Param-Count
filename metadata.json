@@ -1,0 +1,6 @@
+{
+  "name": "Neural Architecture Assessment",
+  "description": "A 16Personalities-style assessment that calculates your human neural parameters, architecture code, and fine-tuning multipliers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
