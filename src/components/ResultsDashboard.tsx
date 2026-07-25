@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { NeuralResults, OpenRouterSynthesis } from '../types';
 import { fetchOpenRouterDiagnosis, OpenRouterFetchResult } from '../utils/openrouter';
 import { GlobalDistributionCharts } from './GlobalDistributionCharts';
+import { ModelBenchmarksCard } from './ModelBenchmarksCard';
 import {
   Cpu,
   Share2,
@@ -294,7 +295,10 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
         </div>
       </div>
 
-      {/* 4. Global Telemetry Distribution */}
+      {/* 4. Model Benchmarks Comparison */}
+      <ModelBenchmarksCard userParamsBillion={results.finalParams / 1e9} />
+
+      {/* 5. Global Telemetry Distribution */}
       <GlobalDistributionCharts
         userParamsBillion={results.finalParams / 1e9}
         userArchetype={synthesisData?.customTitle || results.archetypeTitle}
