@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { GlobalAggregates, fetchGlobalAssessmentStats } from '../utils/telemetry';
-import { Users, BarChart3, TrendingUp, Loader2, Award } from 'lucide-react';
+import { Users, TrendingUp, Loader2, Award } from 'lucide-react';
 
 interface GlobalDistributionChartsProps {
   userParamsBillion?: number;
@@ -39,9 +39,9 @@ export const GlobalDistributionCharts: React.FC<GlobalDistributionChartsProps> =
 
   if (loading || !stats) {
     return (
-      <div className="bg-slate-900/50 rounded-2xl border border-slate-800 p-6 text-center space-y-2">
-        <Loader2 className="w-5 h-5 animate-spin text-cyan-400 mx-auto" />
-        <p className="text-xs font-mono text-slate-400">Loading population telemetry...</p>
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center space-y-2 shadow-xs">
+        <Loader2 className="w-5 h-5 animate-spin text-teal-600 mx-auto" />
+        <p className="text-xs font-mono text-slate-500">Loading population distribution...</p>
       </div>
     );
   }
@@ -49,41 +49,41 @@ export const GlobalDistributionCharts: React.FC<GlobalDistributionChartsProps> =
   const userBucketIndex = getUserBucketIndex(userParamsBillion);
 
   return (
-    <div className="bg-slate-900/60 rounded-2xl border border-slate-800/80 p-6 sm:p-8 space-y-6">
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-xs">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-base font-bold text-white tracking-tight">
-              Population Telemetry
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">
+              Population Distribution
             </h2>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-cyan-400 border border-slate-700">
-              Live Firestore Sync
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+              Global Database Sync
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Anonymized distribution benchmarked against {stats.totalAssessments.toLocaleString()} completed assessments
           </p>
         </div>
 
         {/* Tab Selector */}
-        <div className="flex items-center space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono">
+        <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-medium">
           <button
             onClick={() => setActiveTab('params')}
-            className={`px-3 py-1.5 rounded-lg transition ${
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
               activeTab === 'params'
-                ? 'bg-slate-800 text-white font-medium'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Parameter Spread
           </button>
           <button
             onClick={() => setActiveTab('archetypes')}
-            className={`px-3 py-1.5 rounded-lg transition ${
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
               activeTab === 'archetypes'
-                ? 'bg-slate-800 text-white font-medium'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Archetypes
@@ -92,33 +92,33 @@ export const GlobalDistributionCharts: React.FC<GlobalDistributionChartsProps> =
       </div>
 
       {/* Summary Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
-        <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-          <span className="text-slate-400 text-[10px] uppercase flex items-center space-x-1">
-            <Award className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Your Rank</span>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <span className="text-slate-500 text-[10px] uppercase font-semibold flex items-center space-x-1">
+            <Award className="w-3.5 h-3.5 text-teal-600" />
+            <span>Your Percentile</span>
           </span>
-          <span className="text-cyan-300 font-bold text-base block">
+          <span className="text-teal-800 font-bold text-base block">
             Top {100 - stats.userPercentile}% ({stats.userPercentile}th percentile)
           </span>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-          <span className="text-slate-400 text-[10px] uppercase flex items-center space-x-1">
-            <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <span className="text-slate-500 text-[10px] uppercase font-semibold flex items-center space-x-1">
+            <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
             <span>Global Average</span>
           </span>
-          <span className="text-purple-300 font-bold text-base block">
+          <span className="text-slate-800 font-bold text-base block">
             {stats.averageParamsBillion} Billion Params
           </span>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-          <span className="text-slate-400 text-[10px] uppercase flex items-center space-x-1">
-            <Users className="w-3.5 h-3.5 text-slate-400" />
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <span className="text-slate-500 text-[10px] uppercase font-semibold flex items-center space-x-1">
+            <Users className="w-3.5 h-3.5 text-slate-500" />
             <span>Sample Size</span>
           </span>
-          <span className="text-slate-200 font-bold text-base block">
+          <span className="text-slate-800 font-bold text-base block">
             {stats.totalAssessments.toLocaleString()} Records
           </span>
         </div>
@@ -127,23 +127,24 @@ export const GlobalDistributionCharts: React.FC<GlobalDistributionChartsProps> =
       {/* Active Tab View */}
       {activeTab === 'params' ? (
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs font-mono text-slate-400 mb-2">
+          <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
             <span>Human Parameter Distribution (Billions)</span>
-            <span className="text-cyan-400">Highlighted = Your Bucket</span>
+            <span className="text-teal-700 font-medium">Highlighted = Your Range</span>
           </div>
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stats.paramDistribution} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                <XAxis dataKey="range" stroke="#475569" fontSize={11} tickLine={false} />
-                <YAxis stroke="#475569" fontSize={11} tickLine={false} />
+                <XAxis dataKey="range" stroke="#64748b" fontSize={11} tickLine={false} />
+                <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#020617',
-                    borderColor: '#334155',
+                    backgroundColor: '#ffffff',
+                    borderColor: '#cbd5e1',
                     borderRadius: '0.5rem',
-                    color: '#f8fafc',
+                    color: '#0f172a',
                     fontSize: '12px',
-                    fontFamily: 'monospace',
+                    fontFamily: 'sans-serif',
+                    boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
                   }}
                   formatter={(val: number) => [
                     `${val} humans (${Math.round((val / stats.totalAssessments) * 100)}%)`,
@@ -154,8 +155,8 @@ export const GlobalDistributionCharts: React.FC<GlobalDistributionChartsProps> =
                   {stats.paramDistribution.map((_, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={index === userBucketIndex ? '#06b6d4' : '#1e293b'}
-                      stroke={index === userBucketIndex ? '#22d3ee' : '#334155'}
+                      fill={index === userBucketIndex ? '#0d9488' : '#e2e8f0'}
+                      stroke={index === userBucketIndex ? '#0f766e' : '#cbd5e1'}
                       strokeWidth={1}
                     />
                   ))}
@@ -166,22 +167,22 @@ export const GlobalDistributionCharts: React.FC<GlobalDistributionChartsProps> =
         </div>
       ) : (
         <div className="space-y-3">
-          <span className="text-xs font-mono text-slate-400 block">Archetype Frequency breakdown</span>
-          <div className="space-y-2">
+          <span className="text-xs text-slate-500 block font-medium">Archetype Population Breakdown</span>
+          <div className="space-y-2.5">
             {stats.archetypeCounts.map((item, idx) => {
               const isMatch = item.archetype === userArchetype;
               return (
                 <div key={idx} className="space-y-1">
-                  <div className="flex justify-between text-xs font-mono">
-                    <span className={isMatch ? 'text-cyan-300 font-bold' : 'text-slate-300'}>
+                  <div className="flex justify-between text-xs">
+                    <span className={isMatch ? 'text-teal-800 font-bold' : 'text-slate-700 font-medium'}>
                       {item.archetype} {isMatch && '(Your Archetype)'}
                     </span>
-                    <span className="text-slate-400">{item.percentage}% ({item.count})</span>
+                    <span className="text-slate-500">{item.percentage}% ({item.count})</span>
                   </div>
-                  <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
-                        isMatch ? 'bg-cyan-400' : 'bg-slate-700'
+                        isMatch ? 'bg-teal-600' : 'bg-slate-300'
                       }`}
                       style={{ width: `${item.percentage}%` }}
                     />

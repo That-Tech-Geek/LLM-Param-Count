@@ -20,7 +20,7 @@ export default function App() {
   const [results, setResults] = useState<NeuralResults | null>(null);
   const [showInfoModal, setShowInfoModal] = useState<boolean>(false);
 
-  const totalQuestions = QUESTIONS.length; // 10 questions total (6 MCQ + 2 Typing + 2 MCQ)
+  const totalQuestions = QUESTIONS.length; // 10 questions total
 
   // Start Assessment
   const handleStart = () => {
@@ -90,7 +90,7 @@ export default function App() {
     currentStep >= 1 && currentStep <= totalQuestions ? QUESTIONS[currentStep - 1] : null;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500 selection:text-slate-950 flex flex-col justify-between">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-teal-100 selection:text-teal-900 flex flex-col justify-between">
       {/* Top Navbar */}
       <Navbar
         currentStep={currentStep >= 1 && currentStep <= totalQuestions ? currentStep : 0}
@@ -117,10 +117,10 @@ export default function App() {
           <div className="w-full max-w-2xl mx-auto mb-2 flex justify-start">
             <button
               onClick={handleBack}
-              className="text-xs font-mono text-slate-400 hover:text-white flex items-center space-x-1 py-1 px-2.5 rounded-lg bg-slate-900/60 hover:bg-slate-800 transition border border-slate-800/80"
+              className="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center space-x-1 py-1 px-2.5 rounded-lg bg-white hover:bg-slate-100 transition border border-slate-200 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Previous Step</span>
+              <span>Previous Question</span>
             </button>
           </div>
         )}
@@ -167,9 +167,9 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="py-6 border-t border-slate-900 text-center text-xs font-mono text-slate-500">
+      <footer className="py-6 border-t border-slate-200 text-center text-xs text-slate-500 font-medium">
         <p>
-          Neural Architecture Assessment • 16P Edition • Synaptic Evaluation Engine
+          Neural Architecture Assessment • Cognitive & Personality Evaluation
         </p>
       </footer>
 
