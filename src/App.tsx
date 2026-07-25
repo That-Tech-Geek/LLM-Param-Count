@@ -167,7 +167,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="py-6 border-t border-slate-200 text-center text-xs text-slate-500 font-medium">
+      <footer className="py-6 border-t border-slate-200 text-center text-xs text-slate-500 font-medium no-print">
         <p>
           Neural Architecture Assessment • Cognitive & Personality Evaluation
         </p>

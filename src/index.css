@@ -1,1 +1,67 @@
 @import "tailwindcss";
+
+@media print {
+  /* Hide interactive controls and navigation during PDF export/print */
+  .no-print,
+  nav,
+  header,
+  footer,
+  button,
+  select,
+  .no-print-container {
+    display: none !important;
+  }
+
+  /* Show print-only banners and containers */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Page setup */
+  @page {
+    margin: 1.2cm;
+    size: A4 portrait;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  /* Force background colors, gradients, and SVG chart colors in PDF output */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+  }
+
+  /* Prevent page-break cutting through cards */
+  .bg-white,
+  .rounded-2xl,
+  .rounded-xl,
+  .p-6,
+  .p-8,
+  .shadow-xs,
+  .border {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Force expandable math details to show in print */
+  .print-expand {
+    display: block !important;
+    height: auto !important;
+    opacity: 1 !important;
+  }
+
+  /* Clean up widths */
+  .w-full,
+  main {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}

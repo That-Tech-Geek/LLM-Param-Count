@@ -21,6 +21,7 @@ import {
   Info,
   Award,
   Sparkles,
+  Download,
 } from 'lucide-react';
 
 interface ResultsDashboardProps {
@@ -76,6 +77,10 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handleExportPDF = () => {
+    window.print();
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -83,6 +88,17 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
       transition={{ duration: 0.35 }}
       className="w-full max-w-3xl mx-auto py-6 px-4 space-y-8 text-slate-800"
     >
+      {/* Print-Only Header Banner for PDF Export */}
+      <div className="hidden print:block text-center border-b border-slate-300 pb-4 mb-2">
+        <div className="flex items-center justify-center space-x-2 text-slate-900 font-bold text-xl">
+          <Brain className="w-6 h-6 text-teal-600 inline" />
+          <span>Neural Architecture Assessment • Cognitive Profile</span>
+        </div>
+        <p className="text-xs text-slate-500 mt-1">
+          Official Diagnostic Report • {new Date().toLocaleDateString('en-US', { dateStyle: 'full' })}
+        </p>
+      </div>
+
       {/* 1. Primary Hero Result */}
       <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-6 shadow-xs">
         <div className="inline-flex items-center space-x-2 text-xs font-medium px-3.5 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800">
@@ -105,10 +121,18 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2 no-print">
+          <button
+            onClick={handleExportPDF}
+            className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition flex items-center space-x-2 shadow-xs cursor-pointer"
+          >
+            <Download className="w-4 h-4 text-teal-400" />
+            <span>Export Report as PDF</span>
+          </button>
+
           <button
             onClick={handleCopy}
-            className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs transition flex items-center space-x-2 shadow-xs cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs transition flex items-center space-x-2 shadow-xs cursor-pointer"
           >
             {copied ? (
               <>
@@ -306,7 +330,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
         <button
           onClick={() => setShowMathDetails(!showMathDetails)}
-          className="w-full p-4 text-left flex items-center justify-between text-xs font-medium text-slate-600 hover:text-slate-900 transition cursor-pointer"
+          className="w-full p-4 text-left flex items-center justify-between text-xs font-medium text-slate-600 hover:text-slate-900 transition cursor-pointer no-print"
         >
           <div className="flex items-center space-x-2">
             <Info className="w-4 h-4 text-teal-600" />
@@ -315,26 +339,21 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
           {showMathDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
 
-        <AnimatePresence>
-          {showMathDetails && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="p-4 border-t border-slate-100 bg-slate-50 text-xs font-mono space-y-2 text-slate-600"
-            >
-              <p>
-                <strong className="text-slate-800">Formula:</strong> Total Params = Base (70B) × Layer Multiplier × Context Factor
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                <div>• Baseline Capacity: 70,000,000,000</div>
-                <div>• Analytical Layers: {results.layerDepthValue}</div>
-                <div>• Context Window: {results.contextWindowFormatted}</div>
-                <div>• Flexibility Index: {results.temperatureValue}</div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div
+          className={`p-4 border-t border-slate-100 bg-slate-50 text-xs font-mono space-y-2 text-slate-600 ${
+            showMathDetails ? 'block' : 'hidden print:block'
+          }`}
+        >
+          <p>
+            <strong className="text-slate-800">Formula:</strong> Total Params = Base (70B) × Layer Multiplier × Context Factor
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+            <div>• Baseline Capacity: 70,000,000,000</div>
+            <div>• Analytical Layers: {results.layerDepthValue}</div>
+            <div>• Context Window: {results.contextWindowFormatted}</div>
+            <div>• Flexibility Index: {results.temperatureValue}</div>
+          </div>
+        </div>
       </div>
     </motion.div>
   );
