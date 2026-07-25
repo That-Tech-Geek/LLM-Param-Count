@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="brainBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#115e59"/>
+    </linearGradient>
+    <linearGradient id="brainStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf"/>
+      <stop offset="100%" stop-color="#99f6e4"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Rounded Squircle Background -->
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#brainBg)" />
+  
+  <!-- Subtle Circuit Grid Backdrop -->
+  <path d="M 120 256 H 392 M 256 120 V 392" stroke="#134e4a" stroke-width="8" stroke-dasharray="16 16" opacity="0.4" />
+
+  <!-- Brain Vector Outline and Neural Pathways -->
+  <g fill="none" stroke="url(#brainStroke)" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Outer Brain Silhouette -->
+    <path d="M256 128
+             C210 128 160 148 144 192
+             C128 208 120 236 128 264
+             C120 288 124 320 148 340
+             C170 358 200 364 224 352
+             C240 370 256 376 256 376
+             C256 376 272 370 288 352
+             C312 364 342 358 364 340
+             C388 320 392 288 384 264
+             C392 236 384 208 368 192
+             C352 148 302 128 256 128 Z" stroke-width="22"/>
+
+    <!-- Central Hemispheric Fissure -->
+    <path d="M256 128 V376" stroke-width="18" stroke-dasharray="320" />
+
+    <!-- Left Hemisphere Lobes -->
+    <path d="M144 220 C180 230 200 200 240 210" stroke-width="16" />
+    <path d="M136 280 C170 270 190 300 240 280" stroke-width="16" />
+    <path d="M170 340 C190 310 210 330 240 320" stroke-width="14" />
+
+    <!-- Right Hemisphere Lobes -->
+    <path d="M368 220 C332 230 312 200 272 210" stroke-width="16" />
+    <path d="M376 280 C342 270 322 300 272 280" stroke-width="16" />
+    <path d="M342 340 C322 310 302 330 272 320" stroke-width="14" />
+  </g>
+
+  <!-- Glowing Neural Synapse Nodes -->
+  <circle cx="192" cy="190" r="12" fill="#5eead4" />
+  <circle cx="320" cy="190" r="12" fill="#5eead4" />
+  <circle cx="160" cy="270" r="10" fill="#99f6e4" />
+  <circle cx="352" cy="270" r="10" fill="#99f6e4" />
+  <circle cx="210" cy="330" r="10" fill="#5eead4" />
+  <circle cx="302" cy="330" r="10" fill="#5eead4" />
+</svg>

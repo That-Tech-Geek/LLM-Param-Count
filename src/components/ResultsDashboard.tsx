@@ -299,6 +299,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
       <GlobalDistributionCharts
         userParamsBillion={results.finalParams / 1e9}
         userArchetype={synthesisData?.customTitle || results.archetypeTitle}
+        userResults={results}
       />
 
       {/* 6. Score Calculation Breakdown Accordion */}
