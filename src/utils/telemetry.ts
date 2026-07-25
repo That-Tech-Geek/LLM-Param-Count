@@ -72,10 +72,10 @@ export async function logAssessmentToFirestore(results: NeuralResults): Promise<
   }
 }
 
-// Fetch global aggregate statistics across all recorded assessments
+// Fetch global aggregate statistics across all recorded assessments (ONLY real profiles from Firestore)
 export async function fetchGlobalAssessmentStats(currentUserParams?: number): Promise<GlobalAggregates> {
   try {
-    const q = query(collection(db, 'assessments'), orderBy('timestamp', 'desc'), limit(500));
+    const q = query(collection(db, 'assessments'), orderBy('timestamp', 'desc'), limit(1000));
     const snapshot = await getDocs(q);
 
     const records: AssessmentRecord[] = [];
@@ -98,44 +98,74 @@ export async function fetchGlobalAssessmentStats(currentUserParams?: number): Pr
       });
     });
 
-    // If no or few records in database yet, merge with baseline sample seed for full statistical distribution
-    if (records.length < 50) {
-      const seedRecords = generateMockRecords(1200, currentUserParams);
-      records.push(...seedRecords);
+    // If currentUserParams is passed and not already in records, include current user's profile as a real profile entry if needed
+    if (currentUserParams && records.length === 0) {
+      records.push({
+        timestamp: Date.now(),
+        finalParams: currentUserParams,
+        formattedParams: `${(currentUserParams / 1e9).toFixed(1)} Billion`,
+        archetypeTitle: 'Current User Profile',
+        architectureCode: 'USER-ARCH',
+        contextWindowValue: 32,
+        contextWindowFormatted: '32k',
+        attentionHeadsValue: 32,
+        layerDepthValue: 32,
+        temperatureValue: 0.7,
+        topPValue: 0.9,
+        lexicalRichness: 0.5,
+      });
     }
 
     return computeAggregatesFromRecords(records, currentUserParams);
   } catch (err) {
-    console.warn('Error querying Firestore global stats, using local fallback:', err);
-    const mockRecords = generateMockRecords(1200, currentUserParams);
-    return computeAggregatesFromRecords(mockRecords, currentUserParams);
+    console.warn('Error querying Firestore global stats:', err);
+    const records: AssessmentRecord[] = [];
+    if (currentUserParams) {
+      records.push({
+        timestamp: Date.now(),
+        finalParams: currentUserParams,
+        formattedParams: `${(currentUserParams / 1e9).toFixed(1)} Billion`,
+        archetypeTitle: 'Current User Profile',
+        architectureCode: 'USER-ARCH',
+        contextWindowValue: 32,
+        contextWindowFormatted: '32k',
+        attentionHeadsValue: 32,
+        layerDepthValue: 32,
+        temperatureValue: 0.7,
+        topPValue: 0.9,
+        lexicalRichness: 0.5,
+      });
+    }
+    return computeAggregatesFromRecords(records, currentUserParams);
   }
 }
 
 function computeAggregatesFromRecords(records: AssessmentRecord[], currentUserParams?: number): GlobalAggregates {
-  const total = records.length;
+  const actualCount = records.length;
+  const total = Math.max(1, actualCount);
+
   const allParamsB = records.map((r) => r.finalParams / 1e9);
   const sumParamsB = allParamsB.reduce((a, b) => a + b, 0);
-  const avgParamsB = sumParamsB / total;
+  const avgParamsB = actualCount > 0 ? sumParamsB / total : (currentUserParams ? currentUserParams / 1e9 : 70);
 
-  const avgCw = records.reduce((a, r) => a + (r.contextWindowValue || 32), 0) / total;
-  const avgHeads = records.reduce((a, r) => a + (r.attentionHeadsValue || 32), 0) / total;
-  const avgLayers = records.reduce((a, r) => a + (r.layerDepthValue || 32), 0) / total;
-  const avgTemp = records.reduce((a, r) => a + (r.temperatureValue || 0.7), 0) / total;
-  const avgLex = records.reduce((a, r) => a + (r.lexicalRichness || 0.5), 0) / total;
+  const avgCw = actualCount > 0 ? records.reduce((a, r) => a + (r.contextWindowValue || 32), 0) / total : 32;
+  const avgHeads = actualCount > 0 ? records.reduce((a, r) => a + (r.attentionHeadsValue || 32), 0) / total : 32;
+  const avgLayers = actualCount > 0 ? records.reduce((a, r) => a + (r.layerDepthValue || 32), 0) / total : 32;
+  const avgTemp = actualCount > 0 ? records.reduce((a, r) => a + (r.temperatureValue || 0.7), 0) / total : 0.7;
+  const avgLex = actualCount > 0 ? records.reduce((a, r) => a + (r.lexicalRichness || 0.5), 0) / total : 0.5;
 
   const sortedParams = [...allParamsB].sort((a, b) => a - b);
   const medianParamsB = sortedParams[Math.floor(sortedParams.length / 2)] || avgParamsB;
 
   // Compute user percentile
   let userPercentile = 50;
-  if (currentUserParams) {
+  if (currentUserParams && actualCount > 0) {
     const userB = currentUserParams / 1e9;
     const countBelow = sortedParams.filter((p) => p <= userB).length;
     userPercentile = Math.max(1, Math.min(99, Math.round((countBelow / total) * 100)));
   }
 
-  // 1. Coarse Parameter distribution (5 broad buckets for compatibility)
+  // 1. Coarse Parameter distribution
   const paramBucketsCoarse = [
     { range: '< 50B', min: 0, max: 50, count: 0 },
     { range: '50B - 100B', min: 50, max: 100, count: 0 },
@@ -156,9 +186,8 @@ function computeAggregatesFromRecords(records: AssessmentRecord[], currentUserPa
     percentage: Math.round((b.count / total) * 100),
   }));
 
-  // 2. Granular 1B Class Width Parameter Bins (e.g., 10B to 280B in 1B steps)
+  // 2. Granular 1B Class Width Parameter Bins
   const paramBinsMap: Record<number, number> = {};
-  // Determine min and max integer billion bounds
   const minBinB = 10;
   const maxBinB = 280;
 
@@ -184,14 +213,13 @@ function computeAggregatesFromRecords(records: AssessmentRecord[], currentUserPa
     });
   }
 
-  // 3. Context Window (C) Granular Distribution (e.g. 16k, 24k, 32k, 40k, 48k, 56k, 64k, 80k, 96k, 128k)
+  // 3. Context Window (C) Granular Distribution
   const cwSteps = [16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128];
   const cwMap: Record<number, number> = {};
   cwSteps.forEach((s) => (cwMap[s] = 0));
 
   records.forEach((r) => {
     const cwVal = r.contextWindowValue || 32;
-    // Find closest step
     let closest = cwSteps[0];
     let minDiff = Math.abs(cwVal - closest);
     for (const step of cwSteps) {
@@ -211,7 +239,7 @@ function computeAggregatesFromRecords(records: AssessmentRecord[], currentUserPa
     percentage: Number((((cwMap[step] || 0) / total) * 100).toFixed(1)),
   }));
 
-  // 4. Attention Heads (H) Granular Distribution (16 to 128 channels)
+  // 4. Attention Heads (H) Granular Distribution
   const headsSteps = [16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128];
   const headsMap: Record<number, number> = {};
   headsSteps.forEach((s) => (headsMap[s] = 0));
@@ -237,7 +265,7 @@ function computeAggregatesFromRecords(records: AssessmentRecord[], currentUserPa
     percentage: Number((((headsMap[step] || 0) / total) * 100).toFixed(1)),
   }));
 
-  // 5. Layer Depth (L) Granular Distribution (12 to 96 layers)
+  // 5. Layer Depth (L) Granular Distribution
   const layersSteps = [12, 16, 20, 24, 28, 32, 40, 48, 56, 64, 72, 80, 88, 96];
   const layersMap: Record<number, number> = {};
   layersSteps.forEach((s) => (layersMap[s] = 0));
@@ -305,7 +333,7 @@ function computeAggregatesFromRecords(records: AssessmentRecord[], currentUserPa
   }));
 
   return {
-    totalAssessments: total,
+    totalAssessments: actualCount,
     averageParamsBillion: Math.round(avgParamsB * 10) / 10,
     medianParamsBillion: Math.round(medianParamsB * 10) / 10,
     averageContextWindow: Math.round(avgCw * 10) / 10,
@@ -323,80 +351,4 @@ function computeAggregatesFromRecords(records: AssessmentRecord[], currentUserPa
     contextWindowDistribution,
     userPercentile,
   };
-}
-
-// Generate realistic pseudo-Gaussian sample dataset
-function generateMockRecords(count: number, currentUserParams?: number): AssessmentRecord[] {
-  const records: AssessmentRecord[] = [];
-  const archetypes = [
-    'Precision Deductive Engine',
-    'Hyper-Creative Hallucinator',
-    'Overfitted Specialist',
-    'Ultra-Deep Multimodal Agent',
-    'Balanced Frontier Model',
-    'High-Throughput Edge Processor',
-  ];
-
-  const userB = currentUserParams ? currentUserParams / 1e9 : 145;
-
-  for (let i = 0; i < count; i++) {
-    // Box-Muller normal distribution
-    const u1 = Math.random() || 0.0001;
-    const u2 = Math.random() || 0.0001;
-    const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-    const z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);
-
-    // Param in billions: mean = 142B, std = 52B, clamped 12B..275B
-    let pB = 142 + z0 * 52;
-    pB = Math.max(12, Math.min(275, pB));
-
-    // Context in k: mean = 48k, std = 28k, clamped 16..128
-    let cw = 48 + z1 * 28;
-    cw = Math.max(16, Math.min(128, Math.round(cw)));
-
-    // Heads: mean = 48, std = 22
-    let heads = 48 + z0 * 22;
-    heads = Math.max(16, Math.min(128, Math.round(heads)));
-
-    // Layers: mean = 44, std = 18
-    let layers = 44 + z1 * 18;
-    layers = Math.max(12, Math.min(96, Math.round(layers)));
-
-    const arch = archetypes[Math.floor(Math.random() * archetypes.length)];
-
-    records.push({
-      timestamp: Date.now() - Math.floor(Math.random() * 86400000 * 30),
-      finalParams: pB * 1e9,
-      formattedParams: `${pB.toFixed(1)} Billion`,
-      archetypeTitle: arch,
-      architectureCode: `C${cw}K-H${heads}-L${layers}`,
-      contextWindowValue: cw,
-      contextWindowFormatted: `${cw}k tokens`,
-      attentionHeadsValue: heads,
-      layerDepthValue: layers,
-      temperatureValue: Number((0.2 + Math.random() * 0.7).toFixed(2)),
-      topPValue: Number((0.6 + Math.random() * 0.35).toFixed(2)),
-      lexicalRichness: Number((0.4 + Math.random() * 0.45).toFixed(2)),
-    });
-  }
-
-  // Ensure current user parameter is included near their exact value if passed
-  if (currentUserParams) {
-    records.push({
-      timestamp: Date.now(),
-      finalParams: currentUserParams,
-      formattedParams: `${userB.toFixed(1)} Billion`,
-      archetypeTitle: 'Your Profile',
-      architectureCode: 'USER-ARCH',
-      contextWindowValue: 32,
-      contextWindowFormatted: '32k tokens',
-      attentionHeadsValue: 32,
-      layerDepthValue: 32,
-      temperatureValue: 0.65,
-      topPValue: 0.9,
-      lexicalRichness: 0.6,
-    });
-  }
-
-  return records;
 }
