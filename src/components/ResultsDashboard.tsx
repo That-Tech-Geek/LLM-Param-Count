@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { NeuralResults } from '../types';
-import { fetchOpenRouterDiagnosis, OpenRouterResponse } from '../utils/openrouter';
+import { NeuralResults, OpenRouterSynthesis } from '../types';
+import { fetchOpenRouterDiagnosis, OpenRouterFetchResult } from '../utils/openrouter';
 import {
   Cpu,
   Share2,
@@ -21,6 +21,11 @@ import {
   HelpCircle,
   Bot,
   Loader2,
+  Key,
+  MessageSquare,
+  Compass,
+  FileText,
+  Lightbulb,
 } from 'lucide-react';
 
 interface ResultsDashboardProps {
@@ -29,6 +34,14 @@ interface ResultsDashboardProps {
   onToggleSyntheticOverride?: () => void;
 }
 
+const AVAILABLE_MODELS = [
+  { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B Instruct (Free)' },
+  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash Exp (Free)' },
+  { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B Instruct (Free)' },
+  { id: 'qwen/qwen-2.5-coder-32b-instruct:free', name: 'Qwen 2.5 Coder 32B (Free)' },
+  { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 Reasoning (Free)' },
+];
+
 export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
   results,
   onRetake,
@@ -36,66 +49,50 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
   const [copied, setCopied] = useState(false);
   const [showMathDetails, setShowMathDetails] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
+  const [showKeyInput, setShowKeyInput] = useState(false);
 
   // OpenRouter State
-  const [openRouterData, setOpenRouterData] = useState<OpenRouterResponse | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string>('meta-llama/llama-3.1-8b-instruct:free');
+  const [customApiKey, setCustomApiKey] = useState<string>('');
+  const [synthesisData, setSynthesisData] = useState<OpenRouterSynthesis | null>(null);
+  const [modelUsedName, setModelUsedName] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isFallbackMode, setIsFallbackMode] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // Auto-fetch OpenRouter AI diagnosis if configured
-  useEffect(() => {
-    let isMounted = true;
-
-    async function checkAndFetchOpenRouter() {
-      setIsAiLoading(true);
-      setAiError(null);
-      const res = await fetchOpenRouterDiagnosis(
-        results.archetypeTitle,
-        results.architectureCode,
-        results.formattedParams,
-        results.roast,
-        results.praise
-      );
-
-      if (isMounted) {
-        setIsAiLoading(false);
-        if (res && res.result) {
-          setOpenRouterData(res);
-        } else if (res && res.error) {
-          setAiError(res.error);
-        }
-      }
-    }
-
-    checkAndFetchOpenRouter();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [results]);
-
-  const handleManualOpenRouterTrigger = async () => {
+  const runSynthesisFetch = async (model: string, apiKey?: string) => {
     setIsAiLoading(true);
     setAiError(null);
-    const res = await fetchOpenRouterDiagnosis(
-      results.archetypeTitle,
-      results.architectureCode,
-      results.formattedParams,
-      results.roast,
-      results.praise
-    );
+
+    const res: OpenRouterFetchResult = await fetchOpenRouterDiagnosis(results, model, apiKey);
+
     setIsAiLoading(false);
-    if (res && res.result) {
-      setOpenRouterData(res);
-    } else {
-      setAiError('OpenRouter API requires OPENROUTER_API key in environment variables or Vercel config.');
+    if (res.synthesis) {
+      setSynthesisData(res.synthesis);
+      setModelUsedName(res.model);
+      setIsFallbackMode(!!res.isFallback);
+      if (res.error) setAiError(res.error);
     }
+  };
+
+  useEffect(() => {
+    runSynthesisFetch(selectedModel);
+  }, [results]);
+
+  const handleModelChange = (newModel: string) => {
+    setSelectedModel(newModel);
+    runSynthesisFetch(newModel, customApiKey);
+  };
+
+  const handleCustomKeySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    runSynthesisFetch(selectedModel, customApiKey);
   };
 
   // Billions conversion for share copy snippet
   const paramsInBillions = (results.finalParams / 1_000_000_000).toFixed(1);
 
-  const shareText = `🧠 Just scored ${paramsInBillions}B parameters on the Neural Architecture Assessment!\nMy architecture code is ${results.architectureCode}.\nArchetype: ${results.archetypeTitle}\nBeat that, GPT-4! #NeuralArchitecture Assessment`;
+  const shareText = `🧠 Just scored ${paramsInBillions}B parameters on the Neural Architecture Assessment!\nMy architecture code is ${results.architectureCode}.\nArchetype: ${synthesisData?.customTitle || results.archetypeTitle}\nBeat that, GPT-4! #NeuralArchitecture Assessment`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareText);
@@ -110,7 +107,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
       transition={{ duration: 0.5, ease: 'easeOut' }}
       className="w-full max-w-4xl mx-auto py-4 px-2 sm:px-4 space-y-8"
     >
-      {/* 1. Top Section Header & Big Number Hero */}
+      {/* 1. Top Hero Section: Total Parameters */}
       <div className="bg-slate-900/90 rounded-3xl border border-cyan-500/30 p-6 sm:p-10 text-center shadow-2xl relative overflow-hidden backdrop-blur-xl">
         {/* Ambient Glows */}
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -129,11 +126,13 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
           <div className="px-3.5 py-1.5 rounded-full bg-slate-950 border border-purple-500/40 text-purple-300 font-mono text-xs sm:text-sm font-medium flex items-center space-x-1">
             <Award className="w-3.5 h-3.5 text-purple-400" />
             <span>Archetype:</span>
-            <strong className="text-white">{results.archetypeTitle}</strong>
+            <strong className="text-white">
+              {synthesisData?.customTitle || results.archetypeTitle}
+            </strong>
           </div>
         </div>
 
-        {/* The Big Number Hero */}
+        {/* Big Number Display */}
         <div className="my-6 space-y-2">
           <p className="text-xs font-mono uppercase tracking-widest text-slate-400">
             TOTAL HUMAN NEURAL PARAMETERS
@@ -162,7 +161,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
           </div>
         </div>
 
-        {/* Synthetic LLM Trap Warning Box if triggered */}
+        {/* Synthetic Trap Warning if triggered */}
         {results.isSyntheticOverride && (
           <div className="mt-6 p-4 rounded-2xl bg-amber-950/40 border border-amber-500/50 text-left text-amber-200 text-xs font-mono flex items-start space-x-3">
             <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
@@ -178,7 +177,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
           </div>
         )}
 
-        {/* Action Bar (Share & Retake) */}
+        {/* Action Bar */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <button
             onClick={handleCopy}
@@ -207,144 +206,330 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
         </div>
       </div>
 
-      {/* 2. Middle Section: The 16P Trait Sliders (5 Dimensions) */}
-      <div className="bg-slate-900/80 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-xl backdrop-blur-md space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-          <div className="flex items-center space-x-2">
-            <Sliders className="w-5 h-5 text-cyan-400" />
-            <h2 className="text-xl font-bold text-white tracking-tight">
-              Neural Trait Calibration (16P Scale)
-            </h2>
-          </div>
-          <span className="text-xs font-mono text-slate-400 hidden sm:inline">
-            5 Core Cognitive Metrics
-          </span>
-        </div>
-
-        <div className="space-y-5">
-          {/* 1. Context Window */}
-          <TraitBarItem
-            label="Context Window"
-            subtitle="Short-term token retention memory cache"
-            valueText={results.contextWindowFormatted}
-            percentage={Math.min(100, Math.max(15, (results.contextWindowValue / 128) * 100))}
-            color="from-cyan-500 to-blue-600"
-            icon={<Brain className="w-4 h-4 text-cyan-400" />}
-          />
-
-          {/* 2. Attention Heads */}
-          <TraitBarItem
-            label="Attention Heads"
-            subtitle="Parallel task & social signal routing capability"
-            valueText={`${results.attentionHeadsValue} heads`}
-            percentage={Math.min(100, Math.max(20, (results.attentionHeadsValue / 128) * 100))}
-            color="from-indigo-500 to-purple-600"
-            icon={<Cpu className="w-4 h-4 text-indigo-400" />}
-          />
-
-          {/* 3. Layer Depth */}
-          <TraitBarItem
-            label="Layer Depth"
-            subtitle="Recursive abstract reasoning graph layers"
-            valueText={`${results.layerDepthValue} layers`}
-            percentage={Math.min(100, Math.max(20, (results.layerDepthValue / 96) * 100))}
-            color="from-purple-500 to-pink-600"
-            icon={<Layers className="w-4 h-4 text-purple-400" />}
-          />
-
-          {/* 4. Temperature */}
-          <TraitBarItem
-            label="Sampling Temperature"
-            subtitle="Stochastic randomness vs logic variance"
-            valueText={`${results.temperatureValue} (${results.temperatureValue > 0.65 ? 'High Variance' : 'Grounded'})`}
-            percentage={Math.min(100, Math.max(15, results.temperatureValue * 100))}
-            color="from-amber-500 to-rose-600"
-            icon={<Flame className="w-4 h-4 text-amber-400" />}
-          />
-
-          {/* 5. Top-p Sampling */}
-          <TraitBarItem
-            label="Top-p (Nucleus Sampling)"
-            subtitle="Probability mass cutoff threshold"
-            valueText={`${results.topPValue} (${results.topPValue > 0.8 ? 'Broad Nucleus' : 'Tight Cutoff'})`}
-            percentage={Math.min(100, Math.max(20, results.topPValue * 100))}
-            color="from-emerald-500 to-teal-600"
-            icon={<Zap className="w-4 h-4 text-emerald-400" />}
-          />
-        </div>
-      </div>
-
-      {/* 3. Bottom Section: The Diagnosis (Roast & Praise) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Roast Card */}
-        <div className="bg-slate-900/80 rounded-2xl border border-rose-900/40 p-6 shadow-xl backdrop-blur-md relative overflow-hidden">
-          <div className="flex items-center space-x-2 text-rose-400 font-semibold mb-3">
-            <Flame className="w-5 h-5" />
-            <h3 className="text-lg">Synaptic Roast</h3>
-          </div>
-          <p className="text-slate-300 text-sm leading-relaxed font-sans">
-            "{results.roast}"
-          </p>
-        </div>
-
-        {/* Praise Card */}
-        <div className="bg-slate-900/80 rounded-2xl border border-emerald-900/40 p-6 shadow-xl backdrop-blur-md relative overflow-hidden">
-          <div className="flex items-center space-x-2 text-emerald-400 font-semibold mb-3">
-            <Sparkles className="w-5 h-5" />
-            <h3 className="text-lg">Cognitive Strength</h3>
-          </div>
-          <p className="text-slate-300 text-sm leading-relaxed font-sans">
-            "{results.praise}"
-          </p>
-        </div>
-      </div>
-
-      {/* OpenRouter AI Live Fine-Tuned Analysis Card */}
-      <div className="bg-gradient-to-r from-purple-950/60 via-slate-900/90 to-indigo-950/60 rounded-2xl border border-purple-500/30 p-6 shadow-xl backdrop-blur-md space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-800/40 pb-3">
-          <div className="flex items-center space-x-2 text-purple-300 font-semibold">
-            <Bot className="w-5 h-5 text-purple-400 animate-pulse" />
-            <h3 className="text-base font-sans">OpenRouter Live AI Fine-Tuning Synthesis</h3>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-purple-950 border border-purple-700/60 text-purple-300">
-              {openRouterData?.model || 'OpenRouter API'}
-            </span>
-          </div>
-        </div>
-
-        {isAiLoading ? (
-          <div className="py-6 flex items-center justify-center space-x-2 text-purple-300 font-mono text-xs">
-            <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
-            <span>Querying OpenRouter neural model...</span>
-          </div>
-        ) : openRouterData?.result ? (
-          <div className="space-y-2 text-slate-200 text-sm leading-relaxed font-sans bg-slate-950/60 p-4 rounded-xl border border-purple-900/40">
-            <div className="text-xs font-mono text-purple-400 font-semibold mb-1 uppercase tracking-wider flex items-center space-x-1">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Deep Neural Fine-Tuning Analysis:</span>
-            </div>
-            <p className="text-slate-200">{openRouterData.result}</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-xs font-mono text-slate-400">
-              Connect <code className="text-purple-300">OPENROUTER_API</code> in Vercel Environment Variables to generate real-time AI roasts and fine-tuning models.
-            </p>
-            {aiError && (
-              <p className="text-xs font-mono text-amber-400 bg-amber-950/30 p-2 rounded border border-amber-800/50">
-                {aiError}
+      {/* 2. Interactive OpenRouter Control Center */}
+      <div className="bg-gradient-to-r from-purple-950/70 via-slate-900/90 to-indigo-950/70 rounded-2xl border border-purple-500/40 p-5 sm:p-6 shadow-xl backdrop-blur-md space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-purple-800/40 pb-4">
+          <div className="flex items-center space-x-2.5">
+            <Bot className="w-6 h-6 text-purple-400 animate-pulse" />
+            <div>
+              <h3 className="text-base font-bold text-purple-200">
+                OpenRouter AI Live Diagnostic Engine
+              </h3>
+              <p className="text-xs text-slate-400 font-mono">
+                Select an LLM model or connect your OpenRouter API Key
               </p>
-            )}
-            <button
-              onClick={handleManualOpenRouterTrigger}
-              className="px-4 py-2 rounded-xl bg-purple-900/80 hover:bg-purple-800 text-purple-200 font-mono text-xs border border-purple-700/60 transition flex items-center space-x-2"
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <span
+              className={`text-[11px] font-mono px-3 py-1 rounded-full border ${
+                isFallbackMode
+                  ? 'bg-slate-950 border-amber-700/60 text-amber-300'
+                  : 'bg-purple-950 border-purple-600 text-purple-300'
+              }`}
             >
-              <Bot className="w-4 h-4" />
-              <span>Retry OpenRouter AI Generation</span>
+              {modelUsedName || 'OpenRouter API'}
+            </span>
+
+            <button
+              onClick={() => setShowKeyInput(!showKeyInput)}
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-700/50 text-xs font-mono flex items-center space-x-1"
+              title="Configure API Key"
+            >
+              <Key className="w-3.5 h-3.5" />
+              <span>Key</span>
             </button>
           </div>
+        </div>
+
+        {/* Model Selection & Trigger */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+          <div className="sm:col-span-2">
+            <label className="text-[11px] font-mono text-purple-300 block mb-1">
+              Select AI Model for Neural Synthesis:
+            </label>
+            <select
+              value={selectedModel}
+              onChange={(e) => handleModelChange(e.target.value)}
+              className="w-full bg-slate-950 text-slate-200 border border-purple-700/60 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-purple-400"
+            >
+              {AVAILABLE_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <button
+              onClick={() => runSynthesisFetch(selectedModel, customApiKey)}
+              disabled={isAiLoading}
+              className="w-full mt-4 sm:mt-5 px-4 py-2.5 rounded-xl bg-purple-900/90 hover:bg-purple-800 text-purple-100 font-mono text-xs font-semibold border border-purple-500/50 transition flex items-center justify-center space-x-2 shadow-lg disabled:opacity-50"
+            >
+              {isAiLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-purple-300" />
+                  <span>Synthesizing...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-purple-300" />
+                  <span>Run AI Synthesis</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Custom Key Expandable Form */}
+        <AnimatePresence>
+          {showKeyInput && (
+            <motion.form
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              onSubmit={handleCustomKeySubmit}
+              className="p-3 bg-slate-950/80 rounded-xl border border-purple-800/50 space-y-2 text-xs font-mono"
+            >
+              <label className="text-purple-300 block">
+                Enter Custom OpenRouter API Key (<code className="text-purple-400">sk-or-v1-...</code>):
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={customApiKey}
+                  onChange={(e) => setCustomApiKey(e.target.value)}
+                  placeholder="Paste sk-or-v1-..."
+                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-purple-400 text-xs font-mono"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 bg-purple-800 hover:bg-purple-700 text-white rounded-lg font-semibold"
+                >
+                  Apply
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400">
+                Key is processed in-memory for this session only. You can also set{' '}
+                <code className="text-purple-300">OPENROUTER_API</code> in environment variables or Vercel.
+              </p>
+            </motion.form>
+          )}
+        </AnimatePresence>
+
+        {aiError && (
+          <p className="text-xs font-mono text-amber-400 bg-amber-950/40 p-2.5 rounded-xl border border-amber-800/50">
+            Notice: {aiError}
+          </p>
         )}
+      </div>
+
+      {/* 3. Deep LLM Neural Diagnostics Report */}
+      <div className="space-y-6">
+        <div className="flex items-center space-x-2 text-white font-bold text-xl border-b border-slate-800 pb-3">
+          <Brain className="w-6 h-6 text-cyan-400" />
+          <h2>LLM-Powered Synaptic Diagnostic Report</h2>
+        </div>
+
+        {/* Executive Summary Card */}
+        <div className="bg-slate-900/90 rounded-2xl border border-cyan-500/30 p-6 shadow-xl backdrop-blur-md space-y-3">
+          <div className="flex items-center space-x-2 text-cyan-300 font-semibold text-sm uppercase tracking-wider font-mono">
+            <Compass className="w-4 h-4 text-cyan-400" />
+            <span>Synaptic Executive Overview</span>
+          </div>
+          <p className="text-slate-200 text-sm leading-relaxed font-sans">
+            {synthesisData?.summaryOverview || results.archetypeDescription}
+          </p>
+        </div>
+
+        {/* Deep Linguistic Analysis Card */}
+        <div className="bg-slate-900/90 rounded-2xl border border-purple-500/30 p-6 shadow-xl backdrop-blur-md space-y-4">
+          <div className="flex items-center justify-between border-b border-purple-900/40 pb-3">
+            <div className="flex items-center space-x-2 text-purple-300 font-semibold text-sm uppercase tracking-wider font-mono">
+              <MessageSquare className="w-4 h-4 text-purple-400" />
+              <span>Deep Linguistic & Token Fine-Tuning Analysis</span>
+            </div>
+            <span className="text-xs font-mono text-purple-400 bg-purple-950 px-2.5 py-0.5 rounded border border-purple-800">
+              Lexical Richness: {(results.linguisticMetrics.lexicalRichness * 100).toFixed(0)}%
+            </span>
+          </div>
+
+          {/* User's Exact Typed Quotes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+            <div className="p-3 bg-slate-950 rounded-xl border border-purple-900/30 space-y-1">
+              <span className="text-slate-400 text-[10px] uppercase block">
+                Typed 5-Word Mental State (Q7):
+              </span>
+              <p className="text-purple-200 font-sans italic font-medium">
+                "{results.answersSummary?.typedMentalState || 'N/A'}"
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-950 rounded-xl border border-purple-900/30 space-y-1">
+              <span className="text-slate-400 text-[10px] uppercase block">
+                Apology to Future Self (Q8):
+              </span>
+              <p className="text-indigo-200 font-sans italic font-medium">
+                "{results.answersSummary?.typedApology || 'N/A'}"
+              </p>
+            </div>
+          </div>
+
+          <p className="text-slate-300 text-sm leading-relaxed font-sans">
+            {synthesisData?.linguisticAnalysis ||
+              `Your vocabulary diversity score of ${results.linguisticMetrics.lexicalRichness} indicates high token compression across ${results.linguisticMetrics.totalWords} words typed.`}
+          </p>
+        </div>
+
+        {/* 16P Trait Sliders & Custom Explanations */}
+        <div className="bg-slate-900/80 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-xl backdrop-blur-md space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="flex items-center space-x-2">
+              <Sliders className="w-5 h-5 text-cyan-400" />
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                16P Parameter Trait Calibration
+              </h3>
+            </div>
+            <span className="text-xs font-mono text-slate-400 hidden sm:inline">
+              5 Core Cognitive Metrics
+            </span>
+          </div>
+
+          <div className="space-y-6">
+            {/* 1. Context Window */}
+            <TraitBarItem
+              label="Context Window"
+              subtitle="Working memory token cache"
+              valueText={results.contextWindowFormatted}
+              percentage={Math.min(100, Math.max(15, (results.contextWindowValue / 128) * 100))}
+              color="from-cyan-500 to-blue-600"
+              icon={<Brain className="w-4 h-4 text-cyan-400" />}
+              explanation={
+                synthesisData?.contextWindowExplain ||
+                `Your ${results.contextWindowFormatted} context window governs how many multi-turn social messages and working objectives you hold in active RAM simultaneously.`
+              }
+            />
+
+            {/* 2. Attention Heads */}
+            <TraitBarItem
+              label="Attention Heads"
+              subtitle="Parallel social signal routing"
+              valueText={`${results.attentionHeadsValue} heads`}
+              percentage={Math.min(100, Math.max(20, (results.attentionHeadsValue / 128) * 100))}
+              color="from-indigo-500 to-purple-600"
+              icon={<Cpu className="w-4 h-4 text-indigo-400" />}
+              explanation={
+                synthesisData?.attentionHeadsExplain ||
+                `With ${results.attentionHeadsValue} multi-headed attention layers, you split focus between raw task logic, subtext, and emotional tone.`
+              }
+            />
+
+            {/* 3. Layer Depth */}
+            <TraitBarItem
+              label="Layer Depth"
+              subtitle="Recursive overthinking graph"
+              valueText={`${results.layerDepthValue} layers`}
+              percentage={Math.min(100, Math.max(20, (results.layerDepthValue / 96) * 100))}
+              color="from-purple-500 to-pink-600"
+              icon={<Layers className="w-4 h-4 text-purple-400" />}
+              explanation={
+                synthesisData?.layerDepthExplain ||
+                `${results.layerDepthValue} transformer layers allow you to process deep abstract concepts and hidden meanings before reaching a final output.`
+              }
+            />
+
+            {/* 4. Temperature */}
+            <TraitBarItem
+              label="Sampling Temperature"
+              subtitle="Spontaneity vs logic variance"
+              valueText={`${results.temperatureValue} (${
+                results.temperatureValue > 0.65 ? 'High Variance' : 'Grounded'
+              })`}
+              percentage={Math.min(100, Math.max(15, results.temperatureValue * 100))}
+              color="from-amber-500 to-rose-600"
+              icon={<Flame className="w-4 h-4 text-amber-400" />}
+              explanation={
+                synthesisData?.temperatureExplain ||
+                `Sampling temperature of ${results.temperatureValue} balances deterministic factual outputs with creative entropy.`
+              }
+            />
+
+            {/* 5. Top-p */}
+            <TraitBarItem
+              label="Top-p (Nucleus Sampling)"
+              subtitle="Decision probability cutoff"
+              valueText={`${results.topPValue} (${
+                results.topPValue > 0.8 ? 'Broad Nucleus' : 'Tight Cutoff'
+              })`}
+              percentage={Math.min(100, Math.max(20, results.topPValue * 100))}
+              color="from-emerald-500 to-teal-600"
+              icon={<Zap className="w-4 h-4 text-emerald-400" />}
+              explanation={`Top-p of ${results.topPValue} controls the breadth of alternative choices considered before taking action.`}
+            />
+          </div>
+        </div>
+
+        {/* Behavioral Predictions & Optimization Advice */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Behavioral Quirks */}
+          <div className="bg-slate-900/90 rounded-2xl border border-indigo-900/40 p-6 shadow-xl backdrop-blur-md space-y-3">
+            <div className="flex items-center space-x-2 text-indigo-300 font-semibold text-sm uppercase tracking-wider font-mono">
+              <FileText className="w-4 h-4 text-indigo-400" />
+              <span>Predicted Behavioral Quirks</span>
+            </div>
+            <ul className="space-y-2 text-slate-300 text-xs font-sans">
+              {(synthesisData?.behavioralQuirks || [
+                'Checks group chat notifications immediately upon receiving a ping',
+                'Over-optimizes daily routines before abandoning them for new hobbies',
+                'Re-reads sent messages to evaluate their emotional temperature',
+              ]).map((quirk, i) => (
+                <li key={i} className="flex items-start space-x-2">
+                  <span className="text-indigo-400 font-mono font-bold">•</span>
+                  <span>{quirk}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Neural Optimization Protocol */}
+          <div className="bg-slate-900/90 rounded-2xl border border-emerald-900/40 p-6 shadow-xl backdrop-blur-md space-y-3">
+            <div className="flex items-center space-x-2 text-emerald-300 font-semibold text-sm uppercase tracking-wider font-mono">
+              <Lightbulb className="w-4 h-4 text-emerald-400" />
+              <span>Neural Optimization Advice</span>
+            </div>
+            <p className="text-slate-300 text-xs font-sans leading-relaxed">
+              {synthesisData?.optimizationAdvice ||
+                'Flush low-priority items from your active context buffer before attempting high-temperature creative sessions.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Synaptic Roast & Cognitive Strength */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Roast Card */}
+          <div className="bg-slate-900/90 rounded-2xl border border-rose-900/40 p-6 shadow-xl backdrop-blur-md space-y-3">
+            <div className="flex items-center space-x-2 text-rose-400 font-semibold">
+              <Flame className="w-5 h-5" />
+              <h3 className="text-base font-bold">Synaptic Roast</h3>
+            </div>
+            <p className="text-slate-300 text-sm leading-relaxed font-sans">
+              "{synthesisData?.roast || results.roast}"
+            </p>
+          </div>
+
+          {/* Praise Card */}
+          <div className="bg-slate-900/90 rounded-2xl border border-emerald-900/40 p-6 shadow-xl backdrop-blur-md space-y-3">
+            <div className="flex items-center space-x-2 text-emerald-400 font-semibold">
+              <Sparkles className="w-5 h-5" />
+              <h3 className="text-base font-bold">Cognitive Strength</h3>
+            </div>
+            <p className="text-slate-300 text-sm leading-relaxed font-sans">
+              "{synthesisData?.praise || results.praise}"
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* 4. Accordion Section 1: Detailed Fine-Tuning & Math Breakdown */}
@@ -496,6 +681,7 @@ interface TraitBarItemProps {
   percentage: number;
   color: string;
   icon: React.ReactNode;
+  explanation?: string;
 }
 
 const TraitBarItem: React.FC<TraitBarItemProps> = ({
@@ -505,9 +691,10 @@ const TraitBarItem: React.FC<TraitBarItemProps> = ({
   percentage,
   color,
   icon,
+  explanation,
 }) => {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex items-center justify-between text-xs font-mono">
         <div className="flex items-center space-x-2">
           {icon}
@@ -525,6 +712,12 @@ const TraitBarItem: React.FC<TraitBarItemProps> = ({
           transition={{ duration: 0.6, ease: 'easeOut' }}
         />
       </div>
+
+      {explanation && (
+        <p className="text-xs text-slate-400 font-sans leading-relaxed bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
+          {explanation}
+        </p>
+      )}
     </div>
   );
 };

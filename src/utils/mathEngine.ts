@@ -158,6 +158,28 @@ export function calculateResults(answers: AnswersState, submitTimestamp: number 
     isLLMSuspicious
   );
 
+  // Collect MCQ Answers summary for LLM prompt context
+  const mcqSummary: Array<{ questionId: number; question: string; selectedAnswer: string }> = [];
+  QUESTIONS.forEach((q) => {
+    if (q.type === 'mcq') {
+      const selectedId = answers[q.id];
+      const opt = q.options.find((o) => o.id === selectedId);
+      if (opt) {
+        mcqSummary.push({
+          questionId: q.id,
+          question: q.question,
+          selectedAnswer: opt.label,
+        });
+      }
+    }
+  });
+
+  const answersSummary = {
+    typedMentalState: text7,
+    typedApology: text8,
+    mcqSummary,
+  };
+
   const linguisticMetrics: LinguisticMetrics = {
     totalWords: wordCount,
     uniqueWords: uniqueWordsCount,
@@ -190,6 +212,7 @@ export function calculateResults(answers: AnswersState, submitTimestamp: number 
     topPValue,
     linguisticMetrics,
     stats: traitAccumulator,
+    answersSummary,
     timestamp: submitTimestamp,
   };
 }

@@ -1,7 +1,8 @@
 {
-  "name": "react-example",
+  "name": "neural-architecture-assessment",
+  "description": "Human Neural Architecture Assessment and OpenRouter AI Diagnostic Engine",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",

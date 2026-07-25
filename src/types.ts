@@ -59,6 +59,29 @@ export interface LinguisticMetrics {
   llmReason?: string;
 }
 
+export interface OpenRouterSynthesis {
+  customTitle?: string;
+  summaryOverview?: string;
+  linguisticAnalysis?: string;
+  parameterExplanation?: string;
+  contextWindowExplain?: string;
+  attentionHeadsExplain?: string;
+  layerDepthExplain?: string;
+  temperatureExplain?: string;
+  behavioralQuirks?: string[];
+  optimizationAdvice?: string;
+  roast?: string;
+  praise?: string;
+  rawText?: string;
+  modelUsed?: string;
+}
+
+export interface AnswersSummary {
+  typedMentalState: string; // Q7
+  typedApology: string;     // Q8
+  mcqSummary: Array<{ questionId: number; question: string; selectedAnswer: string }>;
+}
+
 export interface NeuralResults {
   baseParams: number;
   textMultiplier: number;
@@ -87,5 +110,6 @@ export interface NeuralResults {
 
   linguisticMetrics: LinguisticMetrics;
   stats: TraitScores;
+  answersSummary: AnswersSummary;
   timestamp: number;
 }

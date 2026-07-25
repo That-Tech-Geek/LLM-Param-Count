@@ -1,6 +1,8 @@
 {
   "name": "Neural Architecture Assessment",
-  "description": "A 16Personalities-style assessment that calculates your human neural parameters, architecture code, and fine-tuning multipliers.",
+  "description": "An interactive computational psychology tool that evaluates human cognition as an artificial neural network, calculating parameter weights, 16P architecture codes, context window limits, and OpenRouter AI fine-tuning reports.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
